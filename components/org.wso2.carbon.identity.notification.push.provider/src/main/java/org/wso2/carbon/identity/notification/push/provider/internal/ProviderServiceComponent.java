@@ -28,6 +28,7 @@ import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
 import org.wso2.carbon.identity.notification.push.provider.PushProvider;
+import org.wso2.carbon.identity.notification.push.provider.impl.AmazonSNSPushProvider;
 import org.wso2.carbon.identity.notification.push.provider.impl.FCMPushProvider;
 import org.wso2.carbon.identity.secret.mgt.core.SecretManager;
 import org.wso2.carbon.identity.secret.mgt.core.SecretResolveManager;
@@ -48,6 +49,7 @@ public class ProviderServiceComponent {
 
         try {
             context.getBundleContext().registerService(PushProvider.class.getName(), new FCMPushProvider(), null);
+            context.getBundleContext().registerService(PushProvider.class.getName(), new AmazonSNSPushProvider(), null);
         } catch (Throwable e) {
             LOG.error("Error occurred while activating Push Provider Service Component", e);
             return;
