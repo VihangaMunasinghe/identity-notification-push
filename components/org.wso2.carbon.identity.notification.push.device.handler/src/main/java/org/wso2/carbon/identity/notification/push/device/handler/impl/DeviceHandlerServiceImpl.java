@@ -410,6 +410,7 @@ public class DeviceHandlerServiceImpl implements DeviceHandlerService {
             PushProvider pushProvider = PushDeviceHandlerDataHolder.getInstance().getPushProvider(pushProviderName);
             pushProvider.registerDevice(pushDeviceData, buildPushSenderData(pushSender));
             device.setProvider(pushProviderName);
+            device.setDeviceHandle(pushDeviceData.getDeviceHandle());
         } catch (NotificationSenderManagementException e) {
             throw new PushDeviceHandlerServerException(
                     "Error occurred while retrieving the push notification senders.", e);
@@ -487,6 +488,7 @@ public class DeviceHandlerServiceImpl implements DeviceHandlerService {
                 PushProvider pushProvider = PushDeviceHandlerDataHolder.getInstance()
                         .getPushProvider(deviceProviderType);
                 pushProvider.updateDevice(pushDeviceData, buildPushSenderData(pushSender));
+                device.setDeviceHandle(pushDeviceData.getDeviceHandle());
             }
         } catch (NotificationSenderManagementException e) {
             throw new PushDeviceHandlerServerException(
