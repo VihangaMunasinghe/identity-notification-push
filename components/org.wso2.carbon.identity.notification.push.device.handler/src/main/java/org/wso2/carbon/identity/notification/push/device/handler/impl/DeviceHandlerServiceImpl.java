@@ -400,7 +400,8 @@ public class DeviceHandlerServiceImpl implements DeviceHandlerService {
      * @param device Device.
      * @throws PushDeviceHandlerServerException Push Device Handler Server Exception.
      */
-    private void handleDeviceRegistrationForProvider(Device device, String platform) throws PushDeviceHandlerServerException {
+    private void handleDeviceRegistrationForProvider(Device device, String platform)
+            throws PushDeviceHandlerServerException {
 
         try {
             PushDeviceData pushDeviceData = buildPushDeviceDataFromDevice(device, platform);
