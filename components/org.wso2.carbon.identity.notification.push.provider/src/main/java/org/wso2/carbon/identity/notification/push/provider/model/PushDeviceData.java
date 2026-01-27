@@ -26,6 +26,7 @@ public class PushDeviceData {
     private String deviceToken;
     private String deviceHandle;
     private String provider;
+    private String platform;
 
     /**
      * Constructor to initialize the push device data.
@@ -54,5 +55,17 @@ public class PushDeviceData {
     public String getProvider() {
 
         return provider;
+    }
+
+    public String getPlatform() {
+        return platform;
+    }
+
+    public void setDeviceHandle(String deviceHandle) {
+        this.deviceHandle = deviceHandle;
+    }
+
+    public void setPlatform(String platform) {
+        this.platform = platform;
     }
 }
