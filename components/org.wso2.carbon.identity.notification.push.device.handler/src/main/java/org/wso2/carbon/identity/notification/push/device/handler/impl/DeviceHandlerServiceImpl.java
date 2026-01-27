@@ -380,7 +380,7 @@ public class DeviceHandlerServiceImpl implements DeviceHandlerService {
         );
 
         // Register the device with the push notification providers.
-        handleDeviceRegistrationForProvider(device);
+        handleDeviceRegistrationForProvider(device, registrationRequest.getPlatform());
 
         try {
             deviceDAO.registerDevice(device, tenantId);
@@ -400,10 +400,10 @@ public class DeviceHandlerServiceImpl implements DeviceHandlerService {
      * @param device Device.
      * @throws PushDeviceHandlerServerException Push Device Handler Server Exception.
      */
-    private void handleDeviceRegistrationForProvider(Device device) throws PushDeviceHandlerServerException {
+    private void handleDeviceRegistrationForProvider(Device device, String platform) throws PushDeviceHandlerServerException {
 
         try {
-            PushDeviceData pushDeviceData = buildPushDeviceDataFromDevice(device);
+            PushDeviceData pushDeviceData = buildPushDeviceDataFromDevice(device, platform);
             PushSenderDTO pushSender = PushDeviceHandlerDataHolder.getInstance()
                     .getNotificationSenderManagementService().getPushSender(DEFAULT_PUSH_PUBLISHER, true);
             String pushProviderName = pushSender.getProvider();
@@ -505,6 +505,20 @@ public class DeviceHandlerServiceImpl implements DeviceHandlerService {
     private PushDeviceData buildPushDeviceDataFromDevice(Device device) {
 
         return new PushDeviceData(device.getDeviceToken(), device.getDeviceHandle(), device.getProvider());
+    }
+
+    /**
+     * Build the push device data from the device.
+     *
+     * @param device Device.
+     * @param platform Platform of the device registered.
+     * @return Push device data.
+     */
+    private PushDeviceData buildPushDeviceDataFromDevice(Device device, String platform) {
+
+        PushDeviceData pushDeviceData = buildPushDeviceDataFromDevice(device);
+        pushDeviceData.setPlatform(platform);
+        return pushDeviceData;
     }
 
     /**
