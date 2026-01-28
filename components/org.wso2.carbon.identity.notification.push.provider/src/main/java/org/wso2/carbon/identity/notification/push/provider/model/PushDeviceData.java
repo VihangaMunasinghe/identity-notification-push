@@ -18,6 +18,8 @@
 
 package org.wso2.carbon.identity.notification.push.provider.model;
 
+import java.util.Map;
+
 /**
  * Model class to hold push device data.
  */
@@ -26,7 +28,7 @@ public class PushDeviceData {
     private String deviceToken;
     private String deviceHandle;
     private String provider;
-    private String platform;
+    private Map<String, String> providerMetadata;
 
     /**
      * Constructor to initialize the push device data.
@@ -57,15 +59,15 @@ public class PushDeviceData {
         return provider;
     }
 
-    public String getPlatform() {
-        return platform;
+    public Map<String, String> getProviderMetadata() {
+        return providerMetadata;
     }
 
     public void setDeviceHandle(String deviceHandle) {
         this.deviceHandle = deviceHandle;
     }
 
-    public void setPlatform(String platform) {
-        this.platform = platform;
+    public void setProviderMetadata(Map<String, String> providerMetadata) {
+        this.providerMetadata = providerMetadata;
     }
 }
