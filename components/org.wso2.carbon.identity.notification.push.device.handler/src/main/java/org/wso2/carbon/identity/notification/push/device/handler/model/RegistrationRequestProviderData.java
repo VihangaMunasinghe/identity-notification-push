@@ -25,6 +25,8 @@ import java.util.Map;
  * Registration request.
  */
 public class RegistrationRequestProviderData implements Serializable {
+
+    private static final long serialVersionUID = -1164483046367892574L;
     private String name;
     private Map<String, String> metadata;
 

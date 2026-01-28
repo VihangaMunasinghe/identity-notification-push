@@ -37,6 +37,7 @@ import org.wso2.carbon.identity.notification.push.device.handler.model.Device;
 import org.wso2.carbon.identity.notification.push.device.handler.model.DeviceRegistrationContext;
 import org.wso2.carbon.identity.notification.push.device.handler.model.RegistrationDiscoveryData;
 import org.wso2.carbon.identity.notification.push.device.handler.model.RegistrationRequest;
+import org.wso2.carbon.identity.notification.push.device.handler.model.RegistrationRequestProviderData;
 import org.wso2.carbon.identity.notification.push.provider.PushProvider;
 import org.wso2.carbon.identity.notification.push.provider.exception.PushProviderException;
 import org.wso2.carbon.identity.notification.push.provider.model.PushDeviceData;
@@ -61,6 +62,7 @@ import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -380,7 +382,7 @@ public class DeviceHandlerServiceImpl implements DeviceHandlerService {
         );
 
         // Register the device with the push notification providers.
-        handleDeviceRegistrationForProvider(device, registrationRequest.getPlatform());
+        handleDeviceRegistrationForProvider(device, registrationRequest.getProvider());
 
         try {
             deviceDAO.registerDevice(device, tenantId);
@@ -400,11 +402,15 @@ public class DeviceHandlerServiceImpl implements DeviceHandlerService {
      * @param device Device.
      * @throws PushDeviceHandlerServerException Push Device Handler Server Exception.
      */
-    private void handleDeviceRegistrationForProvider(Device device, String platform)
+    private void handleDeviceRegistrationForProvider(Device device, RegistrationRequestProviderData providerData)
             throws PushDeviceHandlerServerException {
 
         try {
-            PushDeviceData pushDeviceData = buildPushDeviceDataFromDevice(device, platform);
+            Map<String, String> metadata = null;
+            if (providerData != null) {
+                metadata = providerData.getMetadata();
+            }
+            PushDeviceData pushDeviceData = buildPushDeviceDataFromDevice(device, metadata);
             PushSenderDTO pushSender = PushDeviceHandlerDataHolder.getInstance()
                     .getNotificationSenderManagementService().getPushSender(DEFAULT_PUSH_PUBLISHER, true);
             String pushProviderName = pushSender.getProvider();
@@ -514,13 +520,13 @@ public class DeviceHandlerServiceImpl implements DeviceHandlerService {
      * Build the push device data from the device.
      *
      * @param device Device.
-     * @param platform Platform of the device registered.
+     * @param providerMetadata Platform of the device registered.
      * @return Push device data.
      */
-    private PushDeviceData buildPushDeviceDataFromDevice(Device device, String platform) {
+    private PushDeviceData buildPushDeviceDataFromDevice(Device device, Map<String, String> providerMetadata) {
 
         PushDeviceData pushDeviceData = buildPushDeviceDataFromDevice(device);
-        pushDeviceData.setPlatform(platform);
+        pushDeviceData.setProviderMetadata(providerMetadata);
         return pushDeviceData;
     }
 
