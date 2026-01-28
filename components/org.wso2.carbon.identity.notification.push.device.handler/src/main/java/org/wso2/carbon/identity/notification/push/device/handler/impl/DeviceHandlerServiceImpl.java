@@ -62,7 +62,6 @@ import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -406,11 +405,8 @@ public class DeviceHandlerServiceImpl implements DeviceHandlerService {
             throws PushDeviceHandlerServerException {
 
         try {
-            Map<String, String> metadata = null;
-            if (providerData != null) {
-                metadata = providerData.getMetadata();
-            }
-            PushDeviceData pushDeviceData = buildPushDeviceDataFromDevice(device, metadata);
+            PushDeviceData pushDeviceData = buildPushDeviceDataFromDevice(device);
+            pushDeviceData = setProviderMetadataToPushDeviceData(pushDeviceData, providerData);
             PushSenderDTO pushSender = PushDeviceHandlerDataHolder.getInstance()
                     .getNotificationSenderManagementService().getPushSender(DEFAULT_PUSH_PUBLISHER, true);
             String pushProviderName = pushSender.getProvider();
@@ -517,16 +513,13 @@ public class DeviceHandlerServiceImpl implements DeviceHandlerService {
     }
 
     /**
-     * Build the push device data from the device.
-     *
-     * @param device Device.
-     * @param providerMetadata Platform of the device registered.
-     * @return Push device data.
+     * Set provider metadata to push device data.
      */
-    private PushDeviceData buildPushDeviceDataFromDevice(Device device, Map<String, String> providerMetadata) {
-
-        PushDeviceData pushDeviceData = buildPushDeviceDataFromDevice(device);
-        pushDeviceData.setProviderMetadata(providerMetadata);
+    private PushDeviceData setProviderMetadataToPushDeviceData(
+            PushDeviceData pushDeviceData, RegistrationRequestProviderData providerData) {
+        if (providerData != null) {
+            pushDeviceData.setProviderMetadata(providerData.getMetadata());
+        }
         return pushDeviceData;
     }
 
