@@ -32,8 +32,7 @@ public class RegistrationRequest implements Serializable {
     private String deviceToken;
     private String publicKey;
     private String signature;
-    private String provider;
-    private String platform;
+    private RegistrationRequestProviderData provider;
 
     public RegistrationRequest() {
 
@@ -99,19 +98,11 @@ public class RegistrationRequest implements Serializable {
         this.signature = signature;
     }
 
-    public String getProvider() {
+    public RegistrationRequestProviderData getProvider() {
         return provider;
     }
 
-    public void setProvider(String provider) {
+    public void setProvider(RegistrationRequestProviderData provider) {
         this.provider = provider;
-    }
-
-    public String getPlatform() {
-        return platform;
-    }
-
-    public void setPlatform(String platform) {
-        this.platform = platform;
     }
 }
