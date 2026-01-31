@@ -38,6 +38,7 @@ import org.wso2.carbon.identity.notification.push.device.handler.model.DeviceReg
 import org.wso2.carbon.identity.notification.push.device.handler.model.RegistrationDiscoveryData;
 import org.wso2.carbon.identity.notification.push.device.handler.model.RegistrationRequest;
 import org.wso2.carbon.identity.notification.push.device.handler.model.RegistrationRequestProviderData;
+import org.wso2.carbon.identity.notification.push.device.handler.utils.DeviceHandlerAuditLogger;
 import org.wso2.carbon.identity.notification.push.provider.PushProvider;
 import org.wso2.carbon.identity.notification.push.provider.exception.PushProviderException;
 import org.wso2.carbon.identity.notification.push.provider.model.PushDeviceData;
@@ -89,6 +90,7 @@ public class DeviceHandlerServiceImpl implements DeviceHandlerService {
     private static final Log LOG = LogFactory.getLog(DeviceHandlerServiceImpl.class);
     private DeviceDAO deviceDAO;
     private DeviceRegistrationContextManager deviceRegistrationContextManager;
+    private static final DeviceHandlerAuditLogger AUDIT_LOGGER = new DeviceHandlerAuditLogger();
 
     /**
      * Constructor of DeviceHandlerServiceImpl.
@@ -137,8 +139,15 @@ public class DeviceHandlerServiceImpl implements DeviceHandlerService {
 
         Optional<Device> device = deviceDAO.getDevice(deviceId);
         if (device.isPresent()) {
+            Device deviceToDelete = device.get();
+
             handleDeleteDeviceForProvider(device.get());
             deviceDAO.unregisterDevice(deviceId);
+            AUDIT_LOGGER.printAuditLog(
+                    DeviceHandlerAuditLogger.Operation.UNREGISTER_DEVICE,
+                    deviceId,
+                    deviceToDelete.getUserId()
+            );
         } else {
             throw new PushDeviceHandlerClientException(ERROR_CODE_DEVICE_NOT_FOUND.getCode(),
                     String.format(ERROR_CODE_DEVICE_NOT_FOUND.getMessage(), deviceId));
@@ -164,6 +173,11 @@ public class DeviceHandlerServiceImpl implements DeviceHandlerService {
         }
         handleDeleteDeviceForProvider(device);
         deviceDAO.unregisterDevice(deviceId);
+        AUDIT_LOGGER.printAuditLog(
+                DeviceHandlerAuditLogger.Operation.UNREGISTER_DEVICE,
+                deviceId,
+                device.getUserId()
+        );
     }
 
     @Override
@@ -174,7 +188,13 @@ public class DeviceHandlerServiceImpl implements DeviceHandlerService {
         if (device.isPresent()) {
             handleDeleteDeviceForProvider(device.get());
             String deviceId = device.get().getDeviceId();
+
             deviceDAO.unregisterDevice(deviceId);
+            AUDIT_LOGGER.printAuditLog(
+                    DeviceHandlerAuditLogger.Operation.UNREGISTER_DEVICE,
+                    deviceId,
+                    userId
+            );
         } else {
             throw new PushDeviceHandlerClientException(ERROR_CODE_DEVICE_NOT_FOUND_FOR_USER_ID.getCode(),
                     String.format(ERROR_CODE_DEVICE_NOT_FOUND_FOR_USER_ID.getMessage(), userId));
@@ -265,7 +285,7 @@ public class DeviceHandlerServiceImpl implements DeviceHandlerService {
      * Resolve the tenant and organization information.
      *
      * @param registrationDiscoveryData Registration discovery data.
-     * @param domainIdentifier          Tenant domain or Org Id of the user.
+     * @param domainIdentifier          Tenant domain or Org ID of the user.
      * @throws OrganizationManagementException Organization Management Exception.
      */
     private void resolveTenantAndOrganizationInfo(RegistrationDiscoveryData registrationDiscoveryData,
