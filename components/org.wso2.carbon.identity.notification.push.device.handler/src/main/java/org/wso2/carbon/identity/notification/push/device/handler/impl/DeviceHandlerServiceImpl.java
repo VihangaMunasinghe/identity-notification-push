@@ -427,10 +427,10 @@ public class DeviceHandlerServiceImpl implements DeviceHandlerService {
         try {
             PushDeviceData pushDeviceData = buildPushDeviceDataFromDevice(device);
             pushDeviceData = setProviderMetadataToPushDeviceData(pushDeviceData, providerData);
-            PushSenderDTO pushSender = PushDeviceHandlerDataHolder.getInstance()
-                    .getNotificationSenderManagementService().getPushSender(DEFAULT_PUSH_PUBLISHER, true);
-            String pushProviderName = pushSender.getProvider();
+            String pushProviderName = getPushProviderName(providerData);
             PushProvider pushProvider = PushDeviceHandlerDataHolder.getInstance().getPushProvider(pushProviderName);
+            PushSenderDTO pushSender = PushDeviceHandlerDataHolder.getInstance()
+                    .getNotificationSenderManagementService().getPushSender(pushProvider.getName(), true);
             pushProvider.registerDevice(pushDeviceData, buildPushSenderData(pushSender));
             device.setProvider(pushProviderName);
             device.setDeviceHandle(pushDeviceData.getDeviceHandle());
@@ -453,11 +453,11 @@ public class DeviceHandlerServiceImpl implements DeviceHandlerService {
         String deviceProviderType = device.getProvider();
         PushDeviceData pushDeviceData = buildPushDeviceDataFromDevice(device);
         try {
+            PushProvider pushProvider = PushDeviceHandlerDataHolder.getInstance()
+                    .getPushProvider(deviceProviderType);
             PushSenderDTO pushSender = PushDeviceHandlerDataHolder.getInstance()
-                    .getNotificationSenderManagementService().getPushSender(DEFAULT_PUSH_PUBLISHER, true);
+                    .getNotificationSenderManagementService().getPushSender(pushProvider.getName(), true);
             if (deviceProviderType.equals(pushSender.getProvider())) {
-                PushProvider pushProvider = PushDeviceHandlerDataHolder.getInstance()
-                        .getPushProvider(deviceProviderType);
                 pushProvider.unregisterDevice(pushDeviceData, buildPushSenderData(pushSender));
             }
         } catch (NotificationSenderManagementException e) {
@@ -505,11 +505,11 @@ public class DeviceHandlerServiceImpl implements DeviceHandlerService {
         String deviceProviderType = device.getProvider();
         PushDeviceData pushDeviceData = buildPushDeviceDataFromDevice(device);
         try {
+            PushProvider pushProvider = PushDeviceHandlerDataHolder.getInstance()
+                    .getPushProvider(deviceProviderType);
             PushSenderDTO pushSender = PushDeviceHandlerDataHolder.getInstance()
-                    .getNotificationSenderManagementService().getPushSender(DEFAULT_PUSH_PUBLISHER, true);
+                    .getNotificationSenderManagementService().getPushSender(pushProvider.getName(), true);
             if (deviceProviderType.equals(pushSender.getProvider())) {
-                PushProvider pushProvider = PushDeviceHandlerDataHolder.getInstance()
-                        .getPushProvider(deviceProviderType);
                 pushProvider.updateDevice(pushDeviceData, buildPushSenderData(pushSender));
                 device.setDeviceHandle(pushDeviceData.getDeviceHandle());
             }
@@ -530,6 +530,17 @@ public class DeviceHandlerServiceImpl implements DeviceHandlerService {
     private PushDeviceData buildPushDeviceDataFromDevice(Device device) {
 
         return new PushDeviceData(device.getDeviceToken(), device.getDeviceHandle(), device.getProvider());
+    }
+
+    /**
+     * Get push provider name.
+     */
+    private String getPushProviderName(RegistrationRequestProviderData providerData) {
+        if (providerData != null && StringUtils.isNotBlank(providerData.getName())) {
+            return providerData.getName();
+        }
+        //TODO: Implement this method to get the default push sender.
+        return DEFAULT_PUSH_PUBLISHER;
     }
 
     /**
