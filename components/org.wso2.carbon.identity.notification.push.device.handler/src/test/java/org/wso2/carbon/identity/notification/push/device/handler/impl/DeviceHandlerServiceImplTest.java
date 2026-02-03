@@ -413,6 +413,85 @@ public class DeviceHandlerServiceImplTest {
     }
 
     @Test
+    public void testGetDeviceByUserId() throws PushDeviceHandlerException {
+
+        try (
+                MockedStatic<IdentityTenantUtil> mockedIdentityTenantUtil =
+                        Mockito.mockStatic(IdentityTenantUtil.class);
+        ) {
+            mockedIdentityTenantUtil.when(() -> IdentityTenantUtil.getTenantId(any())).thenReturn(-1234);
+
+            Device deviceObj = new Device();
+            deviceObj.setDeviceId("1234567890");
+            Optional<Device> device = Optional.of(deviceObj);
+            when(deviceDAO.getDeviceByUserId(anyString(), anyInt())).thenReturn(device);
+
+            Device result = deviceHandlerService.getDeviceByUserId("testUserId", "carbon.super");
+            Assert.assertNotNull(result);
+            Assert.assertEquals(result.getDeviceId(), "1234567890");
+        }
+    }
+
+    @Test
+    public void testGetDeviceByUserIdFailure() throws PushDeviceHandlerException {
+
+        try (
+                MockedStatic<IdentityTenantUtil> mockedIdentityTenantUtil =
+                        Mockito.mockStatic(IdentityTenantUtil.class);
+        ) {
+            mockedIdentityTenantUtil.when(() -> IdentityTenantUtil.getTenantId(any())).thenReturn(-1234);
+
+            Optional<Device> device = Optional.empty();
+            when(deviceDAO.getDeviceByUserId(anyString(), anyInt())).thenReturn(device);
+
+            Assert.assertThrows(PushDeviceHandlerClientException.class, () -> {
+                deviceHandlerService.getDeviceByUserId("testUserId", "carbon.super");
+            });
+        }
+    }
+
+    @Test
+    public void testUnregisterDevice()
+            throws PushDeviceHandlerException, NotificationSenderManagementException, PushProviderException {
+
+        try (
+                MockedStatic<PushDeviceHandlerDataHolder> mockedPushDeviceHandlerDataHolder =
+                        Mockito.mockStatic(PushDeviceHandlerDataHolder.class);
+        ) {
+            Device deviceObj = new Device();
+            deviceObj.setDeviceId("1234567890");
+            deviceObj.setProvider("FCM");
+            deviceObj.setDeviceToken(deviceToken);
+            Optional<Device> device = Optional.of(deviceObj);
+            when(deviceDAO.getDevice(anyString())).thenReturn(device);
+
+            PushDeviceHandlerDataHolder pushDeviceHandlerDataHolder = mock(PushDeviceHandlerDataHolder.class);
+            mockedPushDeviceHandlerDataHolder.when(PushDeviceHandlerDataHolder::getInstance)
+                    .thenReturn(pushDeviceHandlerDataHolder);
+
+            NotificationSenderManagementService notificationSenderManagementService =
+                    mock(NotificationSenderManagementService.class);
+            when(pushDeviceHandlerDataHolder.getNotificationSenderManagementService())
+                    .thenReturn(notificationSenderManagementService);
+            PushSenderDTO pushSenderDTO = new PushSenderDTO();
+            pushSenderDTO.setName("PushPublisher");
+            pushSenderDTO.setProvider("FCM");
+            pushSenderDTO.setProviderId("fcm-provider-id");
+            when(notificationSenderManagementService.getPushSender(anyString(), anyBoolean()))
+                    .thenReturn(pushSenderDTO);
+
+            FCMPushProvider fcmPushProvider = mock(FCMPushProvider.class);
+            when(pushDeviceHandlerDataHolder.getPushProvider(anyString())).thenReturn(fcmPushProvider);
+            when(fcmPushProvider.getName()).thenReturn("FCM");
+            doNothing().when(fcmPushProvider).unregisterDevice(any(), any());
+
+            doNothing().when(deviceDAO).unregisterDevice(anyString());
+
+            deviceHandlerService.unregisterDevice("1234567890");
+        }
+    }
+
+    @Test
     public void testUnregisterDeviceFailure() throws PushDeviceHandlerException {
 
         Optional<Device> device = Optional.empty();
@@ -461,6 +540,7 @@ public class DeviceHandlerServiceImplTest {
 
             FCMPushProvider fcmPushProvider = mock(FCMPushProvider.class);
             when(pushDeviceHandlerDataHolder.getPushProvider(anyString())).thenReturn(fcmPushProvider);
+            when(fcmPushProvider.getName()).thenReturn("FCM");
             doNothing().when(fcmPushProvider).unregisterDevice(any(), any());
 
             doNothing().when(deviceDAO).unregisterDevice(anyString());
@@ -537,6 +617,7 @@ public class DeviceHandlerServiceImplTest {
 
             FCMPushProvider fcmPushProvider = mock(FCMPushProvider.class);
             when(pushDeviceHandlerDataHolder.getPushProvider(anyString())).thenReturn(fcmPushProvider);
+            when(fcmPushProvider.getName()).thenReturn("FCM");
             doNothing().when(fcmPushProvider).unregisterDevice(any(), any());
 
             doNothing().when(deviceDAO).unregisterDevice(anyString());
@@ -590,6 +671,7 @@ public class DeviceHandlerServiceImplTest {
 
             FCMPushProvider fcmPushProvider = mock(FCMPushProvider.class);
             when(pushDeviceHandlerDataHolder.getPushProvider(anyString())).thenReturn(fcmPushProvider);
+            when(fcmPushProvider.getName()).thenReturn("FCM");
             doNothing().when(fcmPushProvider).updateDevice(any(), any());
 
             doNothing().when(deviceDAO).editDevice(anyString(), any());
