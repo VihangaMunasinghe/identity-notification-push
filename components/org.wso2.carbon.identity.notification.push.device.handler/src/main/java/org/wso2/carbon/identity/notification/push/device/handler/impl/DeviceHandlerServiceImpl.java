@@ -559,7 +559,6 @@ public class DeviceHandlerServiceImpl implements DeviceHandlerService {
         if (providerData != null && StringUtils.isNotBlank(providerData.getName())) {
             return providerData.getName();
         }
-        //TODO: Implement this method to get the default push sender.
         if (LOG.isDebugEnabled()) {
             LOG.debug("Provider data is not provided in the registration request. Retrieving the default push " +
                     "sender.");
