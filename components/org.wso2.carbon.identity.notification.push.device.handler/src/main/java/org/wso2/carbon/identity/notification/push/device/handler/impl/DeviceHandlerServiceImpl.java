@@ -63,9 +63,11 @@ import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.wso2.carbon.identity.notification.push.device.handler.constant.PushDeviceHandlerConstants.DEFAULT_PUSH_PROVIDER;
 import static org.wso2.carbon.identity.notification.push.device.handler.constant.PushDeviceHandlerConstants.ErrorMessages.ERROR_CODE_DEVICE_ALREADY_REGISTERED;
 import static org.wso2.carbon.identity.notification.push.device.handler.constant.PushDeviceHandlerConstants.ErrorMessages.ERROR_CODE_DEVICE_NOT_FOUND;
 import static org.wso2.carbon.identity.notification.push.device.handler.constant.PushDeviceHandlerConstants.ErrorMessages.ERROR_CODE_DEVICE_NOT_FOUND_FOR_USER_ID;
@@ -80,7 +82,8 @@ import static org.wso2.carbon.identity.notification.push.device.handler.constant
 import static org.wso2.carbon.identity.notification.push.device.handler.constant.PushDeviceHandlerConstants.ErrorMessages.ERROR_CODE_TOKEN_CLAIM_VERIFICATION_FAILED;
 import static org.wso2.carbon.identity.notification.push.device.handler.constant.PushDeviceHandlerConstants.HASHING_ALGORITHM;
 import static org.wso2.carbon.identity.notification.push.device.handler.constant.PushDeviceHandlerConstants.SIGNATURE_ALGORITHM;
-import static org.wso2.carbon.identity.notification.sender.tenant.config.NotificationSenderManagementConstants.DEFAULT_PUSH_PUBLISHER;
+import static org.wso2.carbon.identity.notification.sender.tenant.config.NotificationSenderManagementConstants.PUSH_PUBLISHER_NAME_SUFFIX;
+import static org.wso2.carbon.identity.notification.sender.tenant.config.NotificationSenderManagementConstants.PUSH_PUBLISHER_TYPE;
 
 /**
  * Device handler service implementation.
@@ -430,7 +433,8 @@ public class DeviceHandlerServiceImpl implements DeviceHandlerService {
             String pushProviderName = getPushProviderName(providerData);
             PushProvider pushProvider = PushDeviceHandlerDataHolder.getInstance().getPushProvider(pushProviderName);
             PushSenderDTO pushSender = PushDeviceHandlerDataHolder.getInstance()
-                    .getNotificationSenderManagementService().getPushSender(pushProvider.getName(), true);
+                    .getNotificationSenderManagementService()
+                    .getPushSender(buildPushSenderName(pushProvider.getName()), true);
             pushProvider.registerDevice(pushDeviceData, buildPushSenderData(pushSender));
             device.setProvider(pushProviderName);
             device.setDeviceHandle(pushDeviceData.getDeviceHandle());
@@ -456,7 +460,8 @@ public class DeviceHandlerServiceImpl implements DeviceHandlerService {
             PushProvider pushProvider = PushDeviceHandlerDataHolder.getInstance()
                     .getPushProvider(deviceProviderType);
             PushSenderDTO pushSender = PushDeviceHandlerDataHolder.getInstance()
-                    .getNotificationSenderManagementService().getPushSender(pushProvider.getName(), true);
+                    .getNotificationSenderManagementService()
+                    .getPushSender(buildPushSenderName(pushProvider.getName()), true);
             if (deviceProviderType.equals(pushSender.getProvider())) {
                 pushProvider.unregisterDevice(pushDeviceData, buildPushSenderData(pushSender));
             }
@@ -508,7 +513,8 @@ public class DeviceHandlerServiceImpl implements DeviceHandlerService {
             PushProvider pushProvider = PushDeviceHandlerDataHolder.getInstance()
                     .getPushProvider(deviceProviderType);
             PushSenderDTO pushSender = PushDeviceHandlerDataHolder.getInstance()
-                    .getNotificationSenderManagementService().getPushSender(pushProvider.getName(), true);
+                    .getNotificationSenderManagementService()
+                    .getPushSender(buildPushSenderName(pushProvider.getName()), true);
             if (deviceProviderType.equals(pushSender.getProvider())) {
                 pushProvider.updateDevice(pushDeviceData, buildPushSenderData(pushSender));
                 device.setDeviceHandle(pushDeviceData.getDeviceHandle());
@@ -535,12 +541,43 @@ public class DeviceHandlerServiceImpl implements DeviceHandlerService {
     /**
      * Get push provider name.
      */
-    private String getPushProviderName(RegistrationRequestProviderData providerData) {
+    private String getPushProviderName(RegistrationRequestProviderData providerData)
+            throws PushDeviceHandlerServerException {
         if (providerData != null && StringUtils.isNotBlank(providerData.getName())) {
             return providerData.getName();
         }
         //TODO: Implement this method to get the default push sender.
-        return DEFAULT_PUSH_PUBLISHER;
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Provider data is not provided in the registration request. Retrieving the default push " +
+                    "sender.");
+        }
+        try {
+            Map<String, String> configs = PushDeviceHandlerDataHolder.getInstance()
+                    .getNotificationSenderManagementService()
+                    .getNotiSenderConfigurations(PUSH_PUBLISHER_TYPE, true);
+            if (configs != null && configs.containsKey(DEFAULT_PUSH_PROVIDER)) {
+                return configs.get(DEFAULT_PUSH_PROVIDER);
+            } else {
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Default push notification provider is not configured.");
+                }
+                throw new PushDeviceHandlerServerException(
+                        "Default push notification provider is not configured.");
+            }
+        } catch (NotificationSenderManagementException e) {
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Error occurred while retrieving the default push notification provider", e);
+            }
+            throw new PushDeviceHandlerServerException(
+                    "Error occurred while retrieving the default push notification provider.", e);
+         }
+    }
+
+    /**
+     * Build push sender name.
+     */
+    private String buildPushSenderName(String providerName) {
+        return providerName + PUSH_PUBLISHER_NAME_SUFFIX;
     }
 
     /**
