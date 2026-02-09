@@ -26,6 +26,7 @@ public class PushDeviceHandlerConstants {
     public static final String HASHING_ALGORITHM = "SHA256withRSA";
     public static final String SIGNATURE_ALGORITHM = "RSA";
     public static final String DEVICE_REGISTRATION_REQUEST_CACHE = "PushDeviceRegistrationRequestCache";
+    public static final String DEFAULT_PUSH_PROVIDER = "defaultPushProvider";
 
     /**
      * Private constructor to prevent initialization of the class.
