@@ -45,8 +45,10 @@ import org.wso2.carbon.identity.notification.push.device.handler.model.Device;
 import org.wso2.carbon.identity.notification.push.device.handler.model.DeviceRegistrationContext;
 import org.wso2.carbon.identity.notification.push.device.handler.model.RegistrationDiscoveryData;
 import org.wso2.carbon.identity.notification.push.device.handler.model.RegistrationRequest;
+import org.wso2.carbon.identity.notification.push.device.handler.model.RegistrationRequestProviderData;
 import org.wso2.carbon.identity.notification.push.provider.exception.PushProviderException;
 import org.wso2.carbon.identity.notification.push.provider.impl.FCMPushProvider;
+import org.wso2.carbon.identity.notification.sender.tenant.config.NotificationSenderManagementConstants;
 import org.wso2.carbon.identity.notification.sender.tenant.config.NotificationSenderManagementService;
 import org.wso2.carbon.identity.notification.sender.tenant.config.dto.PushSenderDTO;
 import org.wso2.carbon.identity.notification.sender.tenant.config.exception.NotificationSenderManagementException;
@@ -64,16 +66,22 @@ import java.security.Signature;
 import java.security.SignatureException;
 import java.text.ParseException;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.wso2.carbon.identity.notification.push.device.handler.constant.PushDeviceHandlerConstants.DEFAULT_PUSH_PROVIDER;
 import static org.wso2.carbon.identity.notification.push.device.handler.constant.PushDeviceHandlerConstants.HASHING_ALGORITHM;
 
 /**
@@ -241,14 +249,15 @@ public class DeviceHandlerServiceImplTest {
             when(pushDeviceHandlerDataHolder.getNotificationSenderManagementService())
                     .thenReturn(notificationSenderManagementService);
             PushSenderDTO pushSenderDTO = new PushSenderDTO();
-            pushSenderDTO.setName("PushPublisher");
+            pushSenderDTO.setName("FCM_PushPublisher");
             pushSenderDTO.setProvider("FCM");
             pushSenderDTO.setProviderId("fcm-provider-id");
-            when(notificationSenderManagementService.getPushSender(anyString(), anyBoolean()))
+            when(notificationSenderManagementService.getPushSender(eq("FCM_PushPublisher"), anyBoolean()))
                     .thenReturn(pushSenderDTO);
 
             FCMPushProvider fcmPushProvider = mock(FCMPushProvider.class);
             when(pushDeviceHandlerDataHolder.getPushProvider(anyString())).thenReturn(fcmPushProvider);
+            when(fcmPushProvider.getName()).thenReturn("FCM");
             doNothing().when(fcmPushProvider).registerDevice(any(), any());
 
             doNothing().when(deviceDAO).registerDevice(any(), anyInt());
@@ -413,6 +422,85 @@ public class DeviceHandlerServiceImplTest {
     }
 
     @Test
+    public void testGetDeviceByUserId() throws PushDeviceHandlerException {
+
+        try (
+                MockedStatic<IdentityTenantUtil> mockedIdentityTenantUtil =
+                        Mockito.mockStatic(IdentityTenantUtil.class);
+        ) {
+            mockedIdentityTenantUtil.when(() -> IdentityTenantUtil.getTenantId(any())).thenReturn(-1234);
+
+            Device deviceObj = new Device();
+            deviceObj.setDeviceId("1234567890");
+            Optional<Device> device = Optional.of(deviceObj);
+            when(deviceDAO.getDeviceByUserId(anyString(), anyInt())).thenReturn(device);
+
+            Device result = deviceHandlerService.getDeviceByUserId("testUserId", "carbon.super");
+            Assert.assertNotNull(result);
+            Assert.assertEquals(result.getDeviceId(), "1234567890");
+        }
+    }
+
+    @Test
+    public void testGetDeviceByUserIdFailure() throws PushDeviceHandlerException {
+
+        try (
+                MockedStatic<IdentityTenantUtil> mockedIdentityTenantUtil =
+                        Mockito.mockStatic(IdentityTenantUtil.class);
+        ) {
+            mockedIdentityTenantUtil.when(() -> IdentityTenantUtil.getTenantId(any())).thenReturn(-1234);
+
+            Optional<Device> device = Optional.empty();
+            when(deviceDAO.getDeviceByUserId(anyString(), anyInt())).thenReturn(device);
+
+            Assert.assertThrows(PushDeviceHandlerClientException.class, () -> {
+                deviceHandlerService.getDeviceByUserId("testUserId", "carbon.super");
+            });
+        }
+    }
+
+    @Test
+    public void testUnregisterDevice()
+            throws PushDeviceHandlerException, NotificationSenderManagementException, PushProviderException {
+
+        try (
+                MockedStatic<PushDeviceHandlerDataHolder> mockedPushDeviceHandlerDataHolder =
+                        Mockito.mockStatic(PushDeviceHandlerDataHolder.class);
+        ) {
+            Device deviceObj = new Device();
+            deviceObj.setDeviceId("1234567890");
+            deviceObj.setProvider("FCM");
+            deviceObj.setDeviceToken(deviceToken);
+            Optional<Device> device = Optional.of(deviceObj);
+            when(deviceDAO.getDevice(anyString())).thenReturn(device);
+
+            PushDeviceHandlerDataHolder pushDeviceHandlerDataHolder = mock(PushDeviceHandlerDataHolder.class);
+            mockedPushDeviceHandlerDataHolder.when(PushDeviceHandlerDataHolder::getInstance)
+                    .thenReturn(pushDeviceHandlerDataHolder);
+
+            NotificationSenderManagementService notificationSenderManagementService =
+                    mock(NotificationSenderManagementService.class);
+            when(pushDeviceHandlerDataHolder.getNotificationSenderManagementService())
+                    .thenReturn(notificationSenderManagementService);
+            PushSenderDTO pushSenderDTO = new PushSenderDTO();
+            pushSenderDTO.setName("PushPublisher");
+            pushSenderDTO.setProvider("FCM");
+            pushSenderDTO.setProviderId("fcm-provider-id");
+            when(notificationSenderManagementService.getPushSender(anyString(), anyBoolean()))
+                    .thenReturn(pushSenderDTO);
+
+            FCMPushProvider fcmPushProvider = mock(FCMPushProvider.class);
+            when(pushDeviceHandlerDataHolder.getPushProvider(anyString())).thenReturn(fcmPushProvider);
+            when(fcmPushProvider.getName()).thenReturn("FCM");
+            doNothing().when(fcmPushProvider).unregisterDevice(any(), any());
+
+            doNothing().when(deviceDAO).unregisterDevice(anyString());
+
+            deviceHandlerService.unregisterDevice("1234567890");
+        }
+    }
+
+    @Test
     public void testUnregisterDeviceFailure() throws PushDeviceHandlerException {
 
         Optional<Device> device = Optional.empty();
@@ -453,14 +541,15 @@ public class DeviceHandlerServiceImplTest {
             when(pushDeviceHandlerDataHolder.getNotificationSenderManagementService())
                     .thenReturn(notificationSenderManagementService);
             PushSenderDTO pushSenderDTO = new PushSenderDTO();
-            pushSenderDTO.setName("PushPublisher");
+            pushSenderDTO.setName("FCM_PushPublisher");
             pushSenderDTO.setProvider("FCM");
             pushSenderDTO.setProviderId("fcm-provider-id");
-            when(notificationSenderManagementService.getPushSender(anyString(), anyBoolean()))
+            when(notificationSenderManagementService.getPushSender(eq("FCM_PushPublisher"), anyBoolean()))
                     .thenReturn(pushSenderDTO);
 
             FCMPushProvider fcmPushProvider = mock(FCMPushProvider.class);
-            when(pushDeviceHandlerDataHolder.getPushProvider(anyString())).thenReturn(fcmPushProvider);
+            when(pushDeviceHandlerDataHolder.getPushProvider(eq("FCM"))).thenReturn(fcmPushProvider);
+            when(fcmPushProvider.getName()).thenReturn("FCM");
             doNothing().when(fcmPushProvider).unregisterDevice(any(), any());
 
             doNothing().when(deviceDAO).unregisterDevice(anyString());
@@ -529,14 +618,15 @@ public class DeviceHandlerServiceImplTest {
             when(pushDeviceHandlerDataHolder.getNotificationSenderManagementService())
                     .thenReturn(notificationSenderManagementService);
             PushSenderDTO pushSenderDTO = new PushSenderDTO();
-            pushSenderDTO.setName("PushPublisher");
+            pushSenderDTO.setName("FCM_PushPublisher");
             pushSenderDTO.setProvider("FCM");
             pushSenderDTO.setProviderId("fcm-provider-id");
-            when(notificationSenderManagementService.getPushSender(anyString(), anyBoolean()))
+            when(notificationSenderManagementService.getPushSender(eq("FCM_PushPublisher"), anyBoolean()))
                     .thenReturn(pushSenderDTO);
 
             FCMPushProvider fcmPushProvider = mock(FCMPushProvider.class);
-            when(pushDeviceHandlerDataHolder.getPushProvider(anyString())).thenReturn(fcmPushProvider);
+            when(pushDeviceHandlerDataHolder.getPushProvider(eq("FCM"))).thenReturn(fcmPushProvider);
+            when(fcmPushProvider.getName()).thenReturn("FCM");
             doNothing().when(fcmPushProvider).unregisterDevice(any(), any());
 
             doNothing().when(deviceDAO).unregisterDevice(anyString());
@@ -582,14 +672,15 @@ public class DeviceHandlerServiceImplTest {
             when(pushDeviceHandlerDataHolder.getNotificationSenderManagementService())
                     .thenReturn(notificationSenderManagementService);
             PushSenderDTO pushSenderDTO = new PushSenderDTO();
-            pushSenderDTO.setName("PushPublisher");
+            pushSenderDTO.setName("FCM_PushPublisher");
             pushSenderDTO.setProvider("FCM");
             pushSenderDTO.setProviderId("fcm-provider-id");
-            when(notificationSenderManagementService.getPushSender(anyString(), anyBoolean()))
+            when(notificationSenderManagementService.getPushSender(eq("FCM_PushPublisher"), anyBoolean()))
                     .thenReturn(pushSenderDTO);
 
             FCMPushProvider fcmPushProvider = mock(FCMPushProvider.class);
-            when(pushDeviceHandlerDataHolder.getPushProvider(anyString())).thenReturn(fcmPushProvider);
+            when(pushDeviceHandlerDataHolder.getPushProvider(eq("FCM"))).thenReturn(fcmPushProvider);
+            when(fcmPushProvider.getName()).thenReturn("FCM");
             doNothing().when(fcmPushProvider).updateDevice(any(), any());
 
             doNothing().when(deviceDAO).editDevice(anyString(), any());
@@ -638,7 +729,8 @@ public class DeviceHandlerServiceImplTest {
             mockedOrganizationManagementUtil.when(
                     () -> OrganizationManagementUtil.isOrganization(anyString())).thenReturn(false);
             mockedIdentityUtil.when(
-                    () -> IdentityUtil.getServerURL(null, false, false)).thenReturn("https://localhost:9443");
+                    () -> IdentityUtil.getServerURL(null, false, false))
+                    .thenReturn("https://localhost:9443");
 
             RegistrationDiscoveryData data =
                     deviceHandlerService.getRegistrationDiscoveryData("testUser@carbon.super", "carbon.super");
@@ -692,6 +784,9 @@ public class DeviceHandlerServiceImplTest {
         registrationRequest.setDeviceToken(deviceToken);
         registrationRequest.setSignature(signature);
         registrationRequest.setPublicKey(publicKey);
+        // Add provider data for multi-provider support
+        RegistrationRequestProviderData providerData = new RegistrationRequestProviderData("FCM", null);
+        registrationRequest.setProvider(providerData);
         return registrationRequest;
     }
 
@@ -703,5 +798,395 @@ public class DeviceHandlerServiceImplTest {
                 "carbon.super",
                 false
         );
+    }
+
+    // ==================== Multi-Provider Support Tests ====================
+
+    /**
+     * Test device registration with explicit provider data.
+     * This tests the primary use case where the client specifies which provider to use.
+     */
+    @Test
+    public void testRegisterDeviceWithExplicitProviderData()
+            throws PushDeviceHandlerException, UserStoreException, NotificationSenderManagementException,
+            PushProviderException {
+
+        RegistrationRequest registrationRequest = createRegistrationRequest();
+        // Explicitly set provider data
+        Map<String, String> metadata = new HashMap<>();
+        metadata.put("priority", "high");
+        RegistrationRequestProviderData providerData = new RegistrationRequestProviderData("FCM", metadata);
+        registrationRequest.setProvider(providerData);
+
+        DeviceRegistrationContext deviceRegistrationContext = createDeviceRegistrationContext();
+
+        when(deviceRegistrationContextManager.getContext(anyString(), anyString()))
+                .thenReturn(deviceRegistrationContext);
+
+        try (
+                MockedStatic<IdentityTenantUtil> mockedIdentityTenantUtil =
+                        Mockito.mockStatic(IdentityTenantUtil.class);
+                MockedStatic<PushDeviceHandlerDataHolder> mockedPushDeviceHandlerDataHolder =
+                        Mockito.mockStatic(PushDeviceHandlerDataHolder.class);
+        ) {
+
+            mockedIdentityTenantUtil.when(() -> IdentityTenantUtil.getTenantId(any())).thenReturn(-1234);
+            UserRealm userRealm = mock(UserRealm.class);
+            mockedIdentityTenantUtil.when(
+                    () -> IdentityTenantUtil.getRealm(anyString(), anyString())).thenReturn(userRealm);
+            AbstractUserStoreManager abstractUserStoreManager = mock(AbstractUserStoreManager.class);
+            when(userRealm.getUserStoreManager()).thenReturn(abstractUserStoreManager);
+            when(abstractUserStoreManager.getUserIDFromUserName(anyString())).thenReturn("testUserId");
+
+            when(deviceDAO.getDeviceByUserId(anyString(), anyInt())).thenReturn(Optional.empty());
+
+            PushDeviceHandlerDataHolder pushDeviceHandlerDataHolder = mock(PushDeviceHandlerDataHolder.class);
+            mockedPushDeviceHandlerDataHolder.when(
+                    PushDeviceHandlerDataHolder::getInstance).thenReturn(pushDeviceHandlerDataHolder);
+
+            NotificationSenderManagementService notificationSenderManagementService =
+                    mock(NotificationSenderManagementService.class);
+            when(pushDeviceHandlerDataHolder.getNotificationSenderManagementService())
+                    .thenReturn(notificationSenderManagementService);
+            PushSenderDTO pushSenderDTO = new PushSenderDTO();
+            pushSenderDTO.setName("FCM_PushPublisher");
+            pushSenderDTO.setProvider("FCM");
+            pushSenderDTO.setProviderId("fcm-provider-id");
+            when(notificationSenderManagementService.getPushSender(eq("FCM_PushPublisher"), anyBoolean()))
+                    .thenReturn(pushSenderDTO);
+
+            FCMPushProvider fcmPushProvider = mock(FCMPushProvider.class);
+            when(pushDeviceHandlerDataHolder.getPushProvider(eq("FCM"))).thenReturn(fcmPushProvider);
+            when(fcmPushProvider.getName()).thenReturn("FCM");
+            doNothing().when(fcmPushProvider).registerDevice(any(), any());
+
+            doNothing().when(deviceDAO).registerDevice(any(), anyInt());
+
+            Device registeredDevice = deviceHandlerService
+                    .registerDevice(registrationRequest, "carbon.super");
+
+            Assert.assertNotNull(registeredDevice);
+            Assert.assertEquals(registeredDevice.getProvider(), "FCM");
+            Assert.assertTrue(deviceRegistrationContext.isRegistered());
+            verify(fcmPushProvider, times(1)).registerDevice(any(), any());
+        }
+    }
+
+    /**
+     * Test device registration with provider metadata.
+     * Ensures that provider-specific metadata is correctly passed through the registration flow.
+     */
+    @Test
+    public void testRegisterDeviceWithProviderMetadata()
+            throws PushDeviceHandlerException, UserStoreException, NotificationSenderManagementException,
+            PushProviderException {
+
+        RegistrationRequest registrationRequest = createRegistrationRequest();
+        Map<String, String> metadata = new HashMap<>();
+        metadata.put("apnsMode", "sandbox");
+        metadata.put("priority", "high");
+        RegistrationRequestProviderData providerData = new RegistrationRequestProviderData("FCM", metadata);
+        registrationRequest.setProvider(providerData);
+
+        DeviceRegistrationContext deviceRegistrationContext = createDeviceRegistrationContext();
+
+        when(deviceRegistrationContextManager.getContext(anyString(), anyString()))
+                .thenReturn(deviceRegistrationContext);
+
+        try (
+                MockedStatic<IdentityTenantUtil> mockedIdentityTenantUtil =
+                        Mockito.mockStatic(IdentityTenantUtil.class);
+                MockedStatic<PushDeviceHandlerDataHolder> mockedPushDeviceHandlerDataHolder =
+                        Mockito.mockStatic(PushDeviceHandlerDataHolder.class);
+        ) {
+
+            mockedIdentityTenantUtil.when(() -> IdentityTenantUtil.getTenantId(any())).thenReturn(-1234);
+            UserRealm userRealm = mock(UserRealm.class);
+            mockedIdentityTenantUtil.when(
+                    () -> IdentityTenantUtil.getRealm(anyString(), anyString())).thenReturn(userRealm);
+            AbstractUserStoreManager abstractUserStoreManager = mock(AbstractUserStoreManager.class);
+            when(userRealm.getUserStoreManager()).thenReturn(abstractUserStoreManager);
+            when(abstractUserStoreManager.getUserIDFromUserName(anyString())).thenReturn("testUserId");
+
+            when(deviceDAO.getDeviceByUserId(anyString(), anyInt())).thenReturn(Optional.empty());
+
+            PushDeviceHandlerDataHolder pushDeviceHandlerDataHolder = mock(PushDeviceHandlerDataHolder.class);
+            mockedPushDeviceHandlerDataHolder.when(
+                    PushDeviceHandlerDataHolder::getInstance).thenReturn(pushDeviceHandlerDataHolder);
+
+            NotificationSenderManagementService notificationSenderManagementService =
+                    mock(NotificationSenderManagementService.class);
+            when(pushDeviceHandlerDataHolder.getNotificationSenderManagementService())
+                    .thenReturn(notificationSenderManagementService);
+            PushSenderDTO pushSenderDTO = new PushSenderDTO();
+            pushSenderDTO.setName("FCM_PushPublisher");
+            pushSenderDTO.setProvider("FCM");
+            pushSenderDTO.setProviderId("fcm-provider-id");
+            when(notificationSenderManagementService.getPushSender(eq("FCM_PushPublisher"), anyBoolean()))
+                    .thenReturn(pushSenderDTO);
+
+            FCMPushProvider fcmPushProvider = mock(FCMPushProvider.class);
+            when(pushDeviceHandlerDataHolder.getPushProvider(eq("FCM"))).thenReturn(fcmPushProvider);
+            when(fcmPushProvider.getName()).thenReturn("FCM");
+            doNothing().when(fcmPushProvider).registerDevice(any(), any());
+
+            doNothing().when(deviceDAO).registerDevice(any(), anyInt());
+
+            Device registeredDevice = deviceHandlerService
+                    .registerDevice(registrationRequest, "carbon.super");
+
+            Assert.assertNotNull(registeredDevice);
+            Assert.assertTrue(deviceRegistrationContext.isRegistered());
+            // Verify that registerDevice was called (metadata would be in PushDeviceData)
+            verify(fcmPushProvider, times(1)).registerDevice(any(), any());
+        }
+    }
+
+    /**
+     * Test device registration without provider data (default provider fallback).
+     * This tests the backward compatibility where no provider is specified.
+     */
+    @Test
+    public void testRegisterDeviceWithoutProviderData()
+            throws PushDeviceHandlerException, UserStoreException, NotificationSenderManagementException,
+            PushProviderException {
+
+        RegistrationRequest registrationRequest = createRegistrationRequest();
+        // Set provider data to null to test default provider fallback
+        registrationRequest.setProvider(null);
+
+        DeviceRegistrationContext deviceRegistrationContext = createDeviceRegistrationContext();
+
+        when(deviceRegistrationContextManager.getContext(anyString(), anyString()))
+                .thenReturn(deviceRegistrationContext);
+
+        try (
+                MockedStatic<IdentityTenantUtil> mockedIdentityTenantUtil =
+                        Mockito.mockStatic(IdentityTenantUtil.class);
+                MockedStatic<PushDeviceHandlerDataHolder> mockedPushDeviceHandlerDataHolder =
+                        Mockito.mockStatic(PushDeviceHandlerDataHolder.class);
+        ) {
+
+            mockedIdentityTenantUtil.when(() -> IdentityTenantUtil.getTenantId(any())).thenReturn(-1234);
+            UserRealm userRealm = mock(UserRealm.class);
+            mockedIdentityTenantUtil.when(
+                    () -> IdentityTenantUtil.getRealm(anyString(), anyString())).thenReturn(userRealm);
+            AbstractUserStoreManager abstractUserStoreManager = mock(AbstractUserStoreManager.class);
+            when(userRealm.getUserStoreManager()).thenReturn(abstractUserStoreManager);
+            when(abstractUserStoreManager.getUserIDFromUserName(anyString())).thenReturn("testUserId");
+
+            when(deviceDAO.getDeviceByUserId(anyString(), anyInt())).thenReturn(Optional.empty());
+
+            PushDeviceHandlerDataHolder pushDeviceHandlerDataHolder = mock(PushDeviceHandlerDataHolder.class);
+            mockedPushDeviceHandlerDataHolder.when(
+                    PushDeviceHandlerDataHolder::getInstance).thenReturn(pushDeviceHandlerDataHolder);
+
+            NotificationSenderManagementService notificationSenderManagementService =
+                    mock(NotificationSenderManagementService.class);
+            when(pushDeviceHandlerDataHolder.getNotificationSenderManagementService())
+                    .thenReturn(notificationSenderManagementService);
+            
+            // Mock default provider configuration
+            Map<String, String> configs = new HashMap<>();
+            configs.put(DEFAULT_PUSH_PROVIDER, "FCM");
+            when(notificationSenderManagementService.getNotiSenderConfigurations(anyString(), anyBoolean()))
+                    .thenReturn(configs);
+
+            PushSenderDTO pushSenderDTO = new PushSenderDTO();
+            pushSenderDTO.setName("FCM_PushPublisher");
+            pushSenderDTO.setProvider("FCM");
+            pushSenderDTO.setProviderId("fcm-provider-id");
+            when(notificationSenderManagementService.getPushSender(eq("FCM_PushPublisher"), anyBoolean()))
+                    .thenReturn(pushSenderDTO);
+
+            FCMPushProvider fcmPushProvider = mock(FCMPushProvider.class);
+            when(pushDeviceHandlerDataHolder.getPushProvider(eq("FCM"))).thenReturn(fcmPushProvider);
+            when(fcmPushProvider.getName()).thenReturn("FCM");
+            doNothing().when(fcmPushProvider).registerDevice(any(), any());
+
+            doNothing().when(deviceDAO).registerDevice(any(), anyInt());
+
+            Device registeredDevice = deviceHandlerService
+                    .registerDevice(registrationRequest, "carbon.super");
+
+            Assert.assertNotNull(registeredDevice);
+            Assert.assertEquals(registeredDevice.getProvider(), "FCM");
+            Assert.assertTrue(deviceRegistrationContext.isRegistered());
+            verify(notificationSenderManagementService, times(1))
+                    .getNotiSenderConfigurations(anyString(), anyBoolean());
+        }
+    }
+
+    /**
+     * Test device registration fails when no provider data and no default configured.
+     * This ensures proper error handling when provider configuration is missing.
+     */
+    @Test
+    public void testRegisterDeviceFailsWithNoProviderAndNoDefault() throws UserStoreException,
+            PushDeviceHandlerException, NotificationSenderManagementException {
+
+        RegistrationRequest registrationRequest = createRegistrationRequest();
+        registrationRequest.setProvider(null);
+
+        DeviceRegistrationContext deviceRegistrationContext = createDeviceRegistrationContext();
+
+        when(deviceRegistrationContextManager.getContext(anyString(), anyString()))
+                .thenReturn(deviceRegistrationContext);
+
+        try (
+                MockedStatic<IdentityTenantUtil> mockedIdentityTenantUtil =
+                        Mockito.mockStatic(IdentityTenantUtil.class);
+                MockedStatic<PushDeviceHandlerDataHolder> mockedPushDeviceHandlerDataHolder =
+                        Mockito.mockStatic(PushDeviceHandlerDataHolder.class);
+        ) {
+
+            mockedIdentityTenantUtil.when(() -> IdentityTenantUtil.getTenantId(any())).thenReturn(-1234);
+            UserRealm userRealm = mock(UserRealm.class);
+            mockedIdentityTenantUtil.when(
+                    () -> IdentityTenantUtil.getRealm(anyString(), anyString())).thenReturn(userRealm);
+            AbstractUserStoreManager abstractUserStoreManager = mock(AbstractUserStoreManager.class);
+            when(userRealm.getUserStoreManager()).thenReturn(abstractUserStoreManager);
+            when(abstractUserStoreManager.getUserIDFromUserName(anyString())).thenReturn("testUserId");
+
+            when(deviceDAO.getDeviceByUserId(anyString(), anyInt())).thenReturn(Optional.empty());
+
+            PushDeviceHandlerDataHolder pushDeviceHandlerDataHolder = mock(PushDeviceHandlerDataHolder.class);
+            mockedPushDeviceHandlerDataHolder.when(
+                    PushDeviceHandlerDataHolder::getInstance).thenReturn(pushDeviceHandlerDataHolder);
+
+            NotificationSenderManagementService notificationSenderManagementService =
+                    mock(NotificationSenderManagementService.class);
+            when(pushDeviceHandlerDataHolder.getNotificationSenderManagementService())
+                    .thenReturn(notificationSenderManagementService);
+
+            // Return null or empty config to simulate no default provider
+            when(notificationSenderManagementService.getNotiSenderConfigurations(anyString(), anyBoolean()))
+                    .thenReturn(null);
+
+            Assert.assertThrows(PushDeviceHandlerServerException.class, () -> {
+                deviceHandlerService.registerDevice(registrationRequest, "carbon.super");
+            });
+        }
+    }
+
+    /**
+     * Test device registration fails when default provider retrieval fails.
+     * This tests error handling for configuration retrieval failures.
+     */
+    @Test
+    public void testRegisterDeviceFailsWhenDefaultProviderRetrievalFails() throws UserStoreException,
+            NotificationSenderManagementException, PushDeviceHandlerException {
+
+        RegistrationRequest registrationRequest = createRegistrationRequest();
+        registrationRequest.setProvider(null);
+
+        DeviceRegistrationContext deviceRegistrationContext = createDeviceRegistrationContext();
+
+        when(deviceRegistrationContextManager.getContext(anyString(), anyString()))
+                .thenReturn(deviceRegistrationContext);
+
+        try (
+                MockedStatic<IdentityTenantUtil> mockedIdentityTenantUtil =
+                        Mockito.mockStatic(IdentityTenantUtil.class);
+                MockedStatic<PushDeviceHandlerDataHolder> mockedPushDeviceHandlerDataHolder =
+                        Mockito.mockStatic(PushDeviceHandlerDataHolder.class);
+        ) {
+
+            mockedIdentityTenantUtil.when(() -> IdentityTenantUtil.getTenantId(any())).thenReturn(-1234);
+            UserRealm userRealm = mock(UserRealm.class);
+            mockedIdentityTenantUtil.when(
+                    () -> IdentityTenantUtil.getRealm(anyString(), anyString())).thenReturn(userRealm);
+            AbstractUserStoreManager abstractUserStoreManager = mock(AbstractUserStoreManager.class);
+            when(userRealm.getUserStoreManager()).thenReturn(abstractUserStoreManager);
+            when(abstractUserStoreManager.getUserIDFromUserName(anyString())).thenReturn("testUserId");
+
+            when(deviceDAO.getDeviceByUserId(anyString(), anyInt())).thenReturn(Optional.empty());
+
+            PushDeviceHandlerDataHolder pushDeviceHandlerDataHolder = mock(PushDeviceHandlerDataHolder.class);
+            mockedPushDeviceHandlerDataHolder.when(
+                    PushDeviceHandlerDataHolder::getInstance).thenReturn(pushDeviceHandlerDataHolder);
+
+            NotificationSenderManagementService notificationSenderManagementService =
+                    mock(NotificationSenderManagementService.class);
+            when(pushDeviceHandlerDataHolder.getNotificationSenderManagementService())
+                    .thenReturn(notificationSenderManagementService);
+
+            // Simulate exception during config retrieval
+            when(notificationSenderManagementService.getNotiSenderConfigurations(anyString(), anyBoolean()))
+                    .thenThrow(new NotificationSenderManagementException(
+                            NotificationSenderManagementConstants.ErrorMessage
+                                    .ERROR_CODE_ERROR_GETTING_NOTIFICATION_SENDER,
+                            "Config retrieval failed"));
+
+            Assert.assertThrows(PushDeviceHandlerServerException.class, () -> {
+                deviceHandlerService.registerDevice(registrationRequest, "carbon.super");
+            });
+        }
+    }
+
+    /**
+     * Test device registration with empty provider metadata.
+     * Ensures that empty metadata maps are handled correctly.
+     */
+    @Test
+    public void testRegisterDeviceWithEmptyProviderMetadata()
+            throws PushDeviceHandlerException, UserStoreException, NotificationSenderManagementException,
+            PushProviderException {
+
+        RegistrationRequest registrationRequest = createRegistrationRequest();
+        Map<String, String> emptyMetadata = new HashMap<>();
+        RegistrationRequestProviderData providerData = new RegistrationRequestProviderData("FCM", emptyMetadata);
+        registrationRequest.setProvider(providerData);
+
+        DeviceRegistrationContext deviceRegistrationContext = createDeviceRegistrationContext();
+
+        when(deviceRegistrationContextManager.getContext(anyString(), anyString()))
+                .thenReturn(deviceRegistrationContext);
+
+        try (
+                MockedStatic<IdentityTenantUtil> mockedIdentityTenantUtil =
+                        Mockito.mockStatic(IdentityTenantUtil.class);
+                MockedStatic<PushDeviceHandlerDataHolder> mockedPushDeviceHandlerDataHolder =
+                        Mockito.mockStatic(PushDeviceHandlerDataHolder.class);
+        ) {
+
+            mockedIdentityTenantUtil.when(() -> IdentityTenantUtil.getTenantId(any())).thenReturn(-1234);
+            UserRealm userRealm = mock(UserRealm.class);
+            mockedIdentityTenantUtil.when(
+                    () -> IdentityTenantUtil.getRealm(anyString(), anyString())).thenReturn(userRealm);
+            AbstractUserStoreManager abstractUserStoreManager = mock(AbstractUserStoreManager.class);
+            when(userRealm.getUserStoreManager()).thenReturn(abstractUserStoreManager);
+            when(abstractUserStoreManager.getUserIDFromUserName(anyString())).thenReturn("testUserId");
+
+            when(deviceDAO.getDeviceByUserId(anyString(), anyInt())).thenReturn(Optional.empty());
+
+            PushDeviceHandlerDataHolder pushDeviceHandlerDataHolder = mock(PushDeviceHandlerDataHolder.class);
+            mockedPushDeviceHandlerDataHolder.when(
+                    PushDeviceHandlerDataHolder::getInstance).thenReturn(pushDeviceHandlerDataHolder);
+
+            NotificationSenderManagementService notificationSenderManagementService =
+                    mock(NotificationSenderManagementService.class);
+            when(pushDeviceHandlerDataHolder.getNotificationSenderManagementService())
+                    .thenReturn(notificationSenderManagementService);
+            PushSenderDTO pushSenderDTO = new PushSenderDTO();
+            pushSenderDTO.setName("FCM_PushPublisher");
+            pushSenderDTO.setProvider("FCM");
+            pushSenderDTO.setProviderId("fcm-provider-id");
+            when(notificationSenderManagementService.getPushSender(eq("FCM_PushPublisher"), anyBoolean()))
+                    .thenReturn(pushSenderDTO);
+
+            FCMPushProvider fcmPushProvider = mock(FCMPushProvider.class);
+            when(pushDeviceHandlerDataHolder.getPushProvider(eq("FCM"))).thenReturn(fcmPushProvider);
+            when(fcmPushProvider.getName()).thenReturn("FCM");
+            doNothing().when(fcmPushProvider).registerDevice(any(), any());
+
+            doNothing().when(deviceDAO).registerDevice(any(), anyInt());
+
+            Device registeredDevice = deviceHandlerService
+                    .registerDevice(registrationRequest, "carbon.super");
+
+            Assert.assertNotNull(registeredDevice);
+            Assert.assertTrue(deviceRegistrationContext.isRegistered());
+        }
     }
 }
