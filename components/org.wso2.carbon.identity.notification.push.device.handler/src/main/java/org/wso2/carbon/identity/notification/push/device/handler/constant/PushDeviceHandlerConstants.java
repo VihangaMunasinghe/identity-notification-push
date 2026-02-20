@@ -26,6 +26,7 @@ public class PushDeviceHandlerConstants {
     public static final String HASHING_ALGORITHM = "SHA256withRSA";
     public static final String SIGNATURE_ALGORITHM = "RSA";
     public static final String DEVICE_REGISTRATION_REQUEST_CACHE = "PushDeviceRegistrationRequestCache";
+    public static final String DEFAULT_PUSH_PROVIDER = "defaultPushProvider";
 
     /**
      * Private constructor to prevent initialization of the class.
@@ -128,6 +129,10 @@ public class PushDeviceHandlerConstants {
         ERROR_CODE_INVALID_EDIT_DEVICE_SCENARIO(
                 "PDH-15012",
                 "Invalid scenario for editing the device for the device ID: %s."
+        ),
+        ERROR_CODE_PROVIDER_NOT_SPECIFIED(
+                "PDH-15013",
+                "Provider is required but not specified in the registration request."
         );
 
         private final String code;
