@@ -65,6 +65,7 @@ import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -85,7 +86,6 @@ import static org.wso2.carbon.identity.notification.push.device.handler.constant
 import static org.wso2.carbon.identity.notification.push.device.handler.constant.PushDeviceHandlerConstants.ErrorMessages.ERROR_CODE_TOKEN_CLAIM_VERIFICATION_FAILED;
 import static org.wso2.carbon.identity.notification.push.device.handler.constant.PushDeviceHandlerConstants.HASHING_ALGORITHM;
 import static org.wso2.carbon.identity.notification.push.device.handler.constant.PushDeviceHandlerConstants.SIGNATURE_ALGORITHM;
-import static org.wso2.carbon.identity.notification.sender.tenant.config.NotificationSenderManagementConstants.PUSH_PUBLISHER_NAME_SUFFIX;
 import static org.wso2.carbon.identity.notification.sender.tenant.config.NotificationSenderManagementConstants.PUSH_PUBLISHER_TYPE;
 
 /**
@@ -442,15 +442,10 @@ public class DeviceHandlerServiceImpl implements DeviceHandlerService {
             pushDeviceData = setProviderMetadataToPushDeviceData(pushDeviceData, providerData);
             String pushProviderName = getPushProviderName(providerData);
             PushProvider pushProvider = PushDeviceHandlerDataHolder.getInstance().getPushProvider(pushProviderName);
-            PushSenderDTO pushSender = PushDeviceHandlerDataHolder.getInstance()
-                    .getNotificationSenderManagementService()
-                    .getPushSender(buildPushSenderName(pushProvider.getName()), true);
+            PushSenderDTO pushSender = getPushSenderForProvider(pushProvider.getName());
             pushProvider.registerDevice(pushDeviceData, buildPushSenderData(pushSender));
             device.setProvider(pushProviderName);
             device.setDeviceHandle(pushDeviceData.getDeviceHandle());
-        } catch (NotificationSenderManagementException e) {
-            throw new PushDeviceHandlerServerException(
-                    "Error occurred while retrieving the push notification senders.", e);
         } catch (PushProviderException e) {
             if (e instanceof PushProviderClientException) {
                 throw new PushDeviceHandlerClientException(e.getErrorCode(), e.getMessage(), e.getCause());
@@ -473,13 +468,8 @@ public class DeviceHandlerServiceImpl implements DeviceHandlerService {
         try {
             PushProvider pushProvider = PushDeviceHandlerDataHolder.getInstance()
                     .getPushProvider(deviceProviderType);
-            PushSenderDTO pushSender = PushDeviceHandlerDataHolder.getInstance()
-                    .getNotificationSenderManagementService()
-                    .getPushSender(buildPushSenderName(pushProvider.getName()), true);
+            PushSenderDTO pushSender = getPushSenderForProvider(pushProvider.getName());
             pushProvider.unregisterDevice(pushDeviceData, buildPushSenderData(pushSender));
-        } catch (NotificationSenderManagementException e) {
-            throw new PushDeviceHandlerServerException(
-                    "Error occurred while retrieving the push notification senders.", e);
         } catch (PushProviderException e) {
             if (e instanceof PushProviderClientException) {
                 throw new PushDeviceHandlerClientException(e.getErrorCode(), e.getMessage(), e.getCause());
@@ -529,15 +519,10 @@ public class DeviceHandlerServiceImpl implements DeviceHandlerService {
         try {
             PushProvider pushProvider = PushDeviceHandlerDataHolder.getInstance()
                     .getPushProvider(deviceProviderType);
-            PushSenderDTO pushSender = PushDeviceHandlerDataHolder.getInstance()
-                    .getNotificationSenderManagementService()
-                    .getPushSender(buildPushSenderName(pushProvider.getName()), true);
+            PushSenderDTO pushSender = getPushSenderForProvider(pushProvider.getName());
             pushProvider.updateDevice(pushDeviceData, buildPushSenderData(pushSender));
             device.setDeviceHandle(pushDeviceData.getDeviceHandle());
 
-        } catch (NotificationSenderManagementException e) {
-            throw new PushDeviceHandlerServerException(
-                    "Error occurred while retrieving the push notification senders.", e);
         } catch (PushProviderException e) {
             if (e instanceof PushProviderClientException) {
                 throw new PushDeviceHandlerClientException(e.getErrorCode(), e.getMessage(), e.getCause());
@@ -592,10 +577,33 @@ public class DeviceHandlerServiceImpl implements DeviceHandlerService {
     }
 
     /**
-     * Build push sender name.
+     * Get the push sender for the given provider.
+     *
+     * @param providerName Provider name.
+     * @return PushSenderDTO.
+     * @throws PushDeviceHandlerServerException Notification Sender Management Exception.
      */
-    private String buildPushSenderName(String providerName) {
-        return providerName + PUSH_PUBLISHER_NAME_SUFFIX;
+    private PushSenderDTO getPushSenderForProvider(String providerName) throws PushDeviceHandlerServerException {
+
+        try {
+            List<PushSenderDTO> pushSenders = PushDeviceHandlerDataHolder.getInstance()
+                    .getNotificationSenderManagementService()
+                    .getPushSenders(true);
+            for (PushSenderDTO pushSender : pushSenders) {
+                if (pushSender.getProvider().equals(providerName)) {
+                    return pushSender;
+                }
+            }
+            // This means no push sender is found for the provider.
+            if (LOG.isDebugEnabled()) {
+                LOG.debug(String.format("No push sender found for the provider: %s", providerName));
+            }
+            throw new PushDeviceHandlerServerException(
+                    String.format("No push sender found for the provider: %s", providerName));
+        } catch (NotificationSenderManagementException e) {
+            throw new PushDeviceHandlerServerException(
+                    "Error occurred while retrieving the push notification senders.", e);
+        }
     }
 
     /**

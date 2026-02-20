@@ -67,8 +67,10 @@ import java.security.NoSuchAlgorithmException;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -255,8 +257,10 @@ public class DeviceHandlerServiceImplTest {
             pushSenderDTO.setName("FCM_PushPublisher");
             pushSenderDTO.setProvider("FCM");
             pushSenderDTO.setProviderId("fcm-provider-id");
-            when(notificationSenderManagementService.getPushSender(eq("FCM_PushPublisher"), anyBoolean()))
-                    .thenReturn(pushSenderDTO);
+            List<PushSenderDTO> pushSenders = new ArrayList<>();
+            pushSenders.add(pushSenderDTO);
+            when(notificationSenderManagementService.getPushSenders(anyBoolean()))
+                    .thenReturn(pushSenders);
 
             FCMPushProvider fcmPushProvider = mock(FCMPushProvider.class);
             when(pushDeviceHandlerDataHolder.getPushProvider(anyString())).thenReturn(fcmPushProvider);
@@ -489,8 +493,10 @@ public class DeviceHandlerServiceImplTest {
             pushSenderDTO.setName("PushPublisher");
             pushSenderDTO.setProvider("FCM");
             pushSenderDTO.setProviderId("fcm-provider-id");
-            when(notificationSenderManagementService.getPushSender(anyString(), anyBoolean()))
-                    .thenReturn(pushSenderDTO);
+            List<PushSenderDTO> pushSenders = new ArrayList<>();
+            pushSenders.add(pushSenderDTO);
+            when(notificationSenderManagementService.getPushSenders(anyBoolean()))
+                    .thenReturn(pushSenders);
 
             FCMPushProvider fcmPushProvider = mock(FCMPushProvider.class);
             when(pushDeviceHandlerDataHolder.getPushProvider(anyString())).thenReturn(fcmPushProvider);
@@ -547,8 +553,10 @@ public class DeviceHandlerServiceImplTest {
             pushSenderDTO.setName("FCM_PushPublisher");
             pushSenderDTO.setProvider("FCM");
             pushSenderDTO.setProviderId("fcm-provider-id");
-            when(notificationSenderManagementService.getPushSender(eq("FCM_PushPublisher"), anyBoolean()))
-                    .thenReturn(pushSenderDTO);
+            List<PushSenderDTO> pushSenders = new ArrayList<>();
+            pushSenders.add(pushSenderDTO);
+            when(notificationSenderManagementService.getPushSenders(anyBoolean()))
+                    .thenReturn(pushSenders);
 
             FCMPushProvider fcmPushProvider = mock(FCMPushProvider.class);
             when(pushDeviceHandlerDataHolder.getPushProvider(eq("FCM"))).thenReturn(fcmPushProvider);
@@ -624,8 +632,10 @@ public class DeviceHandlerServiceImplTest {
             pushSenderDTO.setName("FCM_PushPublisher");
             pushSenderDTO.setProvider("FCM");
             pushSenderDTO.setProviderId("fcm-provider-id");
-            when(notificationSenderManagementService.getPushSender(eq("FCM_PushPublisher"), anyBoolean()))
-                    .thenReturn(pushSenderDTO);
+            List<PushSenderDTO> pushSenders = new ArrayList<>();
+            pushSenders.add(pushSenderDTO);
+            when(notificationSenderManagementService.getPushSenders(anyBoolean()))
+                    .thenReturn(pushSenders);
 
             FCMPushProvider fcmPushProvider = mock(FCMPushProvider.class);
             when(pushDeviceHandlerDataHolder.getPushProvider(eq("FCM"))).thenReturn(fcmPushProvider);
@@ -679,7 +689,7 @@ public class DeviceHandlerServiceImplTest {
             when(fcmPushProvider.getName()).thenReturn("FCM");
             
             // Simulate NotificationSenderManagementService failing
-            when(notificationSenderManagementService.getPushSender(anyString(), anyBoolean()))
+            when(notificationSenderManagementService.getPushSenders(anyBoolean()))
                     .thenThrow(new NotificationSenderManagementException(
                             NotificationSenderManagementConstants.ErrorMessage
                                     .ERROR_CODE_ERROR_GETTING_NOTIFICATION_SENDERS_BY_TYPE,
@@ -718,8 +728,10 @@ public class DeviceHandlerServiceImplTest {
             pushSenderDTO.setName("FCM_PushPublisher");
             pushSenderDTO.setProvider("FCM");
             pushSenderDTO.setProviderId("fcm-provider-id");
-            when(notificationSenderManagementService.getPushSender(anyString(), anyBoolean()))
-                    .thenReturn(pushSenderDTO);
+            List<PushSenderDTO> pushSenders = new ArrayList<>();
+            pushSenders.add(pushSenderDTO);
+            when(notificationSenderManagementService.getPushSenders(anyBoolean()))
+                    .thenReturn(pushSenders);
 
             // Mock PushProvider to throw client exception
             FCMPushProvider fcmPushProvider = mock(FCMPushProvider.class);
@@ -763,8 +775,10 @@ public class DeviceHandlerServiceImplTest {
             pushSenderDTO.setName("FCM_PushPublisher");
             pushSenderDTO.setProvider("FCM");
             pushSenderDTO.setProviderId("fcm-provider-id");
-            when(notificationSenderManagementService.getPushSender(anyString(), anyBoolean()))
-                    .thenReturn(pushSenderDTO);
+            List<PushSenderDTO> pushSenders = new ArrayList<>();
+            pushSenders.add(pushSenderDTO);
+            when(notificationSenderManagementService.getPushSenders(anyBoolean()))
+                    .thenReturn(pushSenders);
 
             // Mock PushProvider to throw server exception
             FCMPushProvider fcmPushProvider = mock(FCMPushProvider.class);
@@ -810,8 +824,10 @@ public class DeviceHandlerServiceImplTest {
             pushSenderDTO.setName("FCM_PushPublisher");
             pushSenderDTO.setProvider("FCM");
             pushSenderDTO.setProviderId("fcm-provider-id");
-            when(notificationSenderManagementService.getPushSender(eq("FCM_PushPublisher"), anyBoolean()))
-                    .thenReturn(pushSenderDTO);
+            List<PushSenderDTO> pushSenders = new ArrayList<>();
+            pushSenders.add(pushSenderDTO);
+            when(notificationSenderManagementService.getPushSenders(anyBoolean()))
+                    .thenReturn(pushSenders);
 
             FCMPushProvider fcmPushProvider = mock(FCMPushProvider.class);
             when(pushDeviceHandlerDataHolder.getPushProvider(eq("FCM"))).thenReturn(fcmPushProvider);
@@ -884,7 +900,7 @@ public class DeviceHandlerServiceImplTest {
             when(fcmPushProvider.getName()).thenReturn("FCM");
             
             // Simulate NotificationSenderManagementService failing
-            when(notificationSenderManagementService.getPushSender(anyString(), anyBoolean()))
+            when(notificationSenderManagementService.getPushSenders(anyBoolean()))
                     .thenThrow(new NotificationSenderManagementException(
                             NotificationSenderManagementConstants.ErrorMessage
                                     .ERROR_CODE_ERROR_GETTING_NOTIFICATION_SENDERS_BY_TYPE,
@@ -925,8 +941,10 @@ public class DeviceHandlerServiceImplTest {
             pushSenderDTO.setName("FCM_PushPublisher");
             pushSenderDTO.setProvider("FCM");
             pushSenderDTO.setProviderId("fcm-provider-id");
-            when(notificationSenderManagementService.getPushSender(eq("FCM_PushPublisher"), anyBoolean()))
-                    .thenReturn(pushSenderDTO);
+            List<PushSenderDTO> pushSenders = new ArrayList<>();
+            pushSenders.add(pushSenderDTO);
+            when(notificationSenderManagementService.getPushSenders(anyBoolean()))
+                    .thenReturn(pushSenders);
 
             // Mock PushProvider to throw client exception
             FCMPushProvider fcmPushProvider = mock(FCMPushProvider.class);
@@ -971,8 +989,10 @@ public class DeviceHandlerServiceImplTest {
             pushSenderDTO.setName("FCM_PushPublisher");
             pushSenderDTO.setProvider("FCM");
             pushSenderDTO.setProviderId("fcm-provider-id");
-            when(notificationSenderManagementService.getPushSender(eq("FCM_PushPublisher"), anyBoolean()))
-                    .thenReturn(pushSenderDTO);
+            List<PushSenderDTO> pushSenders = new ArrayList<>();
+            pushSenders.add(pushSenderDTO);
+            when(notificationSenderManagementService.getPushSenders(anyBoolean()))
+                    .thenReturn(pushSenders);
 
             // Mock PushProvider to throw server exception
             org.wso2.carbon.identity.notification.push.provider.PushProvider pushProvider =
@@ -1091,8 +1111,10 @@ public class DeviceHandlerServiceImplTest {
             pushSenderDTO.setName("FCM_PushPublisher");
             pushSenderDTO.setProvider("FCM");
             pushSenderDTO.setProviderId("fcm-provider-id");
-            when(notificationSenderManagementService.getPushSender(eq("FCM_PushPublisher"), anyBoolean()))
-                    .thenReturn(pushSenderDTO);
+            List<PushSenderDTO> pushSenders = new ArrayList<>();
+            pushSenders.add(pushSenderDTO);
+            when(notificationSenderManagementService.getPushSenders(anyBoolean()))
+                    .thenReturn(pushSenders);
 
             // Mock PushProvider to throw client exception
             org.wso2.carbon.identity.notification.push.provider.PushProvider pushProvider =
@@ -1170,8 +1192,10 @@ public class DeviceHandlerServiceImplTest {
             pushSenderDTO.setName("FCM_PushPublisher");
             pushSenderDTO.setProvider("FCM");
             pushSenderDTO.setProviderId("fcm-provider-id");
-            when(notificationSenderManagementService.getPushSender(eq("FCM_PushPublisher"), anyBoolean()))
-                    .thenReturn(pushSenderDTO);
+            List<PushSenderDTO> pushSenders = new ArrayList<>();
+            pushSenders.add(pushSenderDTO);
+            when(notificationSenderManagementService.getPushSenders(anyBoolean()))
+                    .thenReturn(pushSenders);
 
             FCMPushProvider fcmPushProvider = mock(FCMPushProvider.class);
             when(pushDeviceHandlerDataHolder.getPushProvider(eq("FCM"))).thenReturn(fcmPushProvider);
@@ -1233,7 +1257,7 @@ public class DeviceHandlerServiceImplTest {
             when(pushProvider.getName()).thenReturn("FCM");
 
             // Simulate NotificationSenderManagementService failing when retrieving PushSender
-            when(notificationSenderManagementService.getPushSender(eq("FCM_PushPublisher"), anyBoolean()))
+            when(notificationSenderManagementService.getPushSenders(anyBoolean()))
                     .thenThrow(new NotificationSenderManagementException(
                             NotificationSenderManagementConstants.ErrorMessage
                                     .ERROR_CODE_ERROR_GETTING_NOTIFICATION_SENDERS_BY_TYPE,
@@ -1299,8 +1323,10 @@ public class DeviceHandlerServiceImplTest {
             pushSenderDTO.setName("FCM_PushPublisher");
             pushSenderDTO.setProvider("FCM");
             pushSenderDTO.setProviderId("fcm-provider-id");
-            when(notificationSenderManagementService.getPushSender(eq("FCM_PushPublisher"), anyBoolean()))
-                    .thenReturn(pushSenderDTO);
+            List<PushSenderDTO> pushSenders = new ArrayList<>();
+            pushSenders.add(pushSenderDTO);
+            when(notificationSenderManagementService.getPushSenders(anyBoolean()))
+                    .thenReturn(pushSenders);
 
             FCMPushProvider fcmPushProvider = mock(FCMPushProvider.class);
             when(pushDeviceHandlerDataHolder.getPushProvider(eq("FCM"))).thenReturn(fcmPushProvider);
